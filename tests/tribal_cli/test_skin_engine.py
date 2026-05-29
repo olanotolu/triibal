@@ -23,7 +23,7 @@ class TestSkinConfig:
         from tribal_cli.skin_engine import load_skin
         skin = load_skin("default")
         assert skin.name == "default"
-        assert skin.tool_prefix == "┊"
+        assert skin.tool_prefix == "◇"
         assert "banner_title" in skin.colors
         assert "banner_border" in skin.colors
         assert "agent_name" in skin.branding
@@ -31,7 +31,7 @@ class TestSkinConfig:
     def test_get_color_with_fallback(self):
         from tribal_cli.skin_engine import load_skin
         skin = load_skin("default")
-        assert skin.get_color("banner_title") == "#FFD700"
+        assert skin.get_color("banner_title") == "#B9FFD1"
         assert skin.get_color("nonexistent", "#000") == "#000"
 
     def test_get_branding_with_fallback(self):
@@ -209,7 +209,7 @@ class TestUserSkins:
         assert skin.get_branding("agent_name") == "Custom Agent"
         assert skin.tool_prefix == "▸"
         # Should inherit defaults for unspecified colors
-        assert skin.get_color("banner_border") == "#CD7F32"  # from default
+        assert skin.get_color("banner_border") == "#7CFF9B"  # from default
 
     def test_load_user_skin_invalid_section_types_fall_back_to_defaults(self, tmp_path, monkeypatch):
         from tribal_cli.skin_engine import load_skin
@@ -236,7 +236,7 @@ class TestUserSkins:
         skin = load_skin("broken")
 
         assert skin.name == "broken"
-        assert skin.get_color("banner_title") == "#FFD700"
+        assert skin.get_color("banner_title") == "#B9FFD1"
         assert skin.get_branding("agent_name") == "Tribal Agent"
         assert skin.spinner.get("waiting_faces", []) == []
         assert skin.tool_emojis == {}
@@ -263,7 +263,7 @@ class TestUserSkins:
 class TestDisplayIntegration:
     def test_get_skin_tool_prefix_default(self):
         from agent.display import get_skin_tool_prefix
-        assert get_skin_tool_prefix() == "┊"
+        assert get_skin_tool_prefix() == "◇"
 
     def test_get_skin_tool_prefix_custom(self):
         from tribal_cli.skin_engine import set_active_skin
@@ -277,19 +277,19 @@ class TestDisplayIntegration:
         set_active_skin("ares")
         msg = get_cute_tool_message("terminal", {"command": "ls"}, 0.5)
         assert msg.startswith("╎")
-        assert "┊" not in msg
+        assert "◇" not in msg
 
     def test_tool_message_default_prefix(self):
         from agent.display import get_cute_tool_message
         msg = get_cute_tool_message("terminal", {"command": "ls"}, 0.5)
-        assert msg.startswith("┊")
+        assert msg.startswith("◇")
 
 
 class TestCliBrandingHelpers:
     def test_active_prompt_symbol_default(self):
         from tribal_cli.skin_engine import get_active_prompt_symbol
 
-        assert get_active_prompt_symbol() == "❯ "
+        assert get_active_prompt_symbol() == "◆ "
 
     def test_active_prompt_symbol_ares(self):
         from tribal_cli.skin_engine import set_active_skin, get_active_prompt_symbol

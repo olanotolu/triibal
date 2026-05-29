@@ -17,28 +17,28 @@ All fields are optional. Missing values inherit from the ``default`` skin.
 
     # Colors: hex values for Rich markup (banner, UI, response box)
     colors:
-      banner_border: "#CD7F32"            # Panel border color
-      banner_title: "#FFD700"             # Panel title text color
-      banner_accent: "#FFBF00"            # Section headers (Available Tools, etc.)
-      banner_dim: "#B8860B"               # Dim/muted text (separators, labels)
-      banner_text: "#FFF8DC"              # Body text (tool names, skill names)
-      ui_accent: "#FFBF00"               # General UI accent
-      ui_label: "#DAA520"                # UI labels (warm gold; teal clashed w/ default banner gold)
+      banner_border: "#7CFF9B"            # Panel border color
+      banner_title: "#B9FFD1"             # Panel title text color
+      banner_accent: "#8FFFA8"            # Section headers (Available Tools, etc.)
+      banner_dim: "#5EA66B"               # Dim/muted text (separators, labels)
+      banner_text: "#E8FFE9"              # Body text (tool names, skill names)
+      ui_accent: "#8FFFA8"               # General UI accent
+      ui_label: "#A6F4B8"                # UI labels
       ui_ok: "#4caf50"                   # Success indicators
       ui_error: "#ef5350"                # Error indicators
       ui_warn: "#ffa726"                 # Warning indicators
-      prompt: "#FFF8DC"                  # Prompt text color
-      input_rule: "#CD7F32"              # Input area horizontal rule
-      response_border: "#FFD700"         # Response box border (ANSI)
-      status_bar_bg: "#1a1a2e"           # Status bar background
+      prompt: "#E8FFE9"                  # Prompt text color
+      input_rule: "#7CFF9B"              # Input area horizontal rule
+      response_border: "#7CFF9B"         # Response box border (ANSI)
+      status_bar_bg: "#07140B"           # Status bar background
       status_bar_text: "#C0C0C0"         # Status bar default text
-      status_bar_strong: "#FFD700"       # Status bar highlighted text
+      status_bar_strong: "#B9FFD1"       # Status bar highlighted text
       status_bar_dim: "#8B8682"          # Status bar separators/muted text
       status_bar_good: "#8FBC8F"         # Healthy context usage
-      status_bar_warn: "#FFD700"         # Warning context usage
+      status_bar_warn: "#B9FFD1"         # Warning context usage
       status_bar_bad: "#FF8C00"          # High context usage
       status_bar_critical: "#FF6B6B"     # Critical context usage
-      session_label: "#DAA520"           # Session label color
+      session_label: "#A6F4B8"           # Session label color
       session_border: "#8B8682"          # Session ID dim color
       status_bar_bg: "#1a1a2e"          # TUI status/usage bar background
       voice_status_bg: "#1a1a2e"        # TUI voice status background
@@ -67,13 +67,13 @@ All fields are optional. Missing values inherit from the ``default`` skin.
     branding:
       agent_name: "Tribal Agent"          # Banner title, status display
       welcome: "Welcome message"          # Shown at CLI startup
-      goodbye: "Goodbye! ⚕"              # Shown on exit
-      response_label: " ⚕ Tribal "       # Response box header label
-      prompt_symbol: "❯"                 # Input prompt symbol (bare token; renderers add trailing space)
-      help_header: "(^_^)? Commands"      # /help header text
+      goodbye: "Goodbye! ◆"              # Shown on exit
+      response_label: " ◆ Tribal "       # Response box header label
+      prompt_symbol: "◆"                 # Input prompt symbol (bare token; renderers add trailing space)
+      help_header: "◇ Available Commands" # /help header text
 
-    # Tool prefix: character for tool output lines (default: ┊)
-    tool_prefix: "┊"
+    # Tool prefix: character for tool output lines (default: ◇)
+    tool_prefix: "◇"
 
     # Tool emojis: override the default emoji for any tool (used in spinners & progress)
     tool_emojis:
@@ -89,7 +89,7 @@ USAGE
     from tribal_cli.skin_engine import get_active_skin, list_skins, set_active_skin
 
     skin = get_active_skin()
-    print(skin.colors["banner_title"])    # "#FFD700"
+    print(skin.colors["banner_title"])    # "#B9FFD1"
     print(skin.get_branding("agent_name"))  # "Tribal Agent"
 
     set_active_skin("ares")               # Switch to built-in ares skin
@@ -98,7 +98,7 @@ USAGE
 BUILT-IN SKINS
 ==============
 
-- ``default`` — Classic Tribal gold/kawaii (the current look)
+- ``default`` — Tribal Genesis mint/leaf terminal identity
 - ``ares``    — Crimson/bronze war-god theme with custom spinner wings
 - ``mono``    — Clean grayscale monochrome
 - ``slate``   — Cool blue developer-focused theme
@@ -134,10 +134,10 @@ class SkinConfig:
     colors: Dict[str, str] = field(default_factory=dict)
     spinner: Dict[str, Any] = field(default_factory=dict)
     branding: Dict[str, str] = field(default_factory=dict)
-    tool_prefix: str = "┊"
+    tool_prefix: str = "◇"
     tool_emojis: Dict[str, str] = field(default_factory=dict)  # per-tool emoji overrides
     banner_logo: str = ""    # Rich-markup ASCII art logo (replaces TRIBAL_AGENT_LOGO)
-    banner_hero: str = ""    # Rich-markup hero art (replaces TRIBAL_CADUCEUS)
+    banner_hero: str = ""    # Rich-markup hero art (replaces TRIBAL_MARK)
 
     def get_color(self, key: str, fallback: str = "") -> str:
         """Get a color value with fallback."""
@@ -164,24 +164,29 @@ class SkinConfig:
 _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
     "default": {
         "name": "default",
-        "description": "Classic Tribal — gold and kawaii",
+        "description": "Tribal Genesis — light green collective identity",
         "colors": {
-            "banner_border": "#CD7F32",
-            "banner_title": "#FFD700",
-            "banner_accent": "#FFBF00",
-            "banner_dim": "#B8860B",
-            "banner_text": "#FFF8DC",
-            "ui_accent": "#FFBF00",
-            "ui_label": "#DAA520",
+            "banner_border": "#7CFF9B",
+            "banner_title": "#B9FFD1",
+            "banner_accent": "#8FFFA8",
+            "banner_dim": "#5EA66B",
+            "banner_text": "#E8FFE9",
+            "ui_accent": "#8FFFA8",
+            "ui_label": "#A6F4B8",
             "ui_ok": "#4caf50",
             "ui_error": "#ef5350",
             "ui_warn": "#ffa726",
-            "prompt": "#FFF8DC",
-            "input_rule": "#CD7F32",
-            "response_border": "#FFD700",
-            "status_bar_bg": "#1a1a2e",
-            "session_label": "#DAA520",
-            "session_border": "#8B8682",
+            "prompt": "#E8FFE9",
+            "input_rule": "#7CFF9B",
+            "response_border": "#7CFF9B",
+            "status_bar_bg": "#07140B",
+            "session_label": "#A6F4B8",
+            "session_border": "#5EA66B",
+            "selection_bg": "#12351D",
+            "completion_menu_bg": "#07140B",
+            "completion_menu_current_bg": "#12351D",
+            "completion_menu_meta_bg": "#0B1F11",
+            "completion_menu_meta_current_bg": "#174725",
         },
         "spinner": {
             # Empty = use hardcoded defaults in display.py
@@ -189,12 +194,12 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
         "branding": {
             "agent_name": "Tribal Agent",
             "welcome": "Welcome to Tribal Agent! Type your message or /help for commands.",
-            "goodbye": "Goodbye! ⚕",
-            "response_label": " ⚕ Tribal ",
-            "prompt_symbol": "❯",
-            "help_header": "(^_^)? Available Commands",
+            "goodbye": "Goodbye! ◆",
+            "response_label": " ◆ Tribal ",
+            "prompt_symbol": "◆",
+            "help_header": "◇ Available Commands",
         },
-        "tool_prefix": "┊",
+        "tool_prefix": "◇",
     },
     "ares": {
         "name": "ares",
@@ -300,8 +305,8 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
         "branding": {
             "agent_name": "Tribal Agent",
             "welcome": "Welcome to Tribal Agent! Type your message or /help for commands.",
-            "goodbye": "Goodbye! ⚕",
-            "response_label": " ⚕ Tribal ",
+            "goodbye": "Goodbye! ◆",
+            "response_label": " ◆ Tribal ",
             "prompt_symbol": "❯",
             "help_header": "[?] Available Commands",
         },
@@ -339,8 +344,8 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
         "branding": {
             "agent_name": "Tribal Agent",
             "welcome": "Welcome to Tribal Agent! Type your message or /help for commands.",
-            "goodbye": "Goodbye! ⚕",
-            "response_label": " ⚕ Tribal ",
+            "goodbye": "Goodbye! ◆",
+            "response_label": " ◆ Tribal ",
             "prompt_symbol": "❯",
             "help_header": "(^_^)? Available Commands",
         },
@@ -376,8 +381,8 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
         "branding": {
             "agent_name": "Tribal Agent",
             "welcome": "Welcome to Tribal Agent! Type your message or /help for commands.",
-            "goodbye": "Goodbye! ⚕",
-            "response_label": " ⚕ Tribal ",
+            "goodbye": "Goodbye! ◆",
+            "response_label": " ◆ Tribal ",
             "prompt_symbol": "❯",
             "help_header": "[?] Available Commands",
         },
@@ -709,7 +714,7 @@ def _build_skin_config(data: Dict[str, Any]) -> SkinConfig:
         colors=colors,
         spinner=spinner,
         branding=branding,
-        tool_prefix=data.get("tool_prefix", default.get("tool_prefix", "┊")),
+        tool_prefix=data.get("tool_prefix", default.get("tool_prefix", "◇")),
         tool_emojis=emoji_overrides,
         banner_logo=data.get("banner_logo", ""),
         banner_hero=data.get("banner_hero", ""),
@@ -834,7 +839,7 @@ def get_active_help_header(fallback: str = "(^_^)? Available Commands") -> str:
 
 
 
-def get_active_goodbye(fallback: str = "Goodbye! ⚕") -> str:
+def get_active_goodbye(fallback: str = "Goodbye! ◆") -> str:
     """Get the goodbye line from the active skin."""
     try:
         return get_active_skin().get_branding("goodbye", fallback)
@@ -859,9 +864,9 @@ def get_prompt_toolkit_style_overrides() -> Dict[str, str]:
     # color schemes).  Skins can opt into a colored prompt by setting
     # `prompt` explicitly in their YAML.
     prompt = skin.get_color("prompt", "")
-    input_rule = skin.get_color("input_rule", "#CD7F32")
-    title = skin.get_color("banner_title", "#FFD700")
-    text = skin.get_color("banner_text", "#FFF8DC")
+    input_rule = skin.get_color("input_rule", "#7CFF9B")
+    title = skin.get_color("banner_title", "#B9FFD1")
+    text = skin.get_color("banner_text", "#E8FFE9")
     dim = skin.get_color("banner_dim", "#555555")
     label = skin.get_color("ui_label", title)
     warn = skin.get_color("ui_warn", "#FF8C00")

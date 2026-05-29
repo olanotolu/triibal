@@ -1452,14 +1452,14 @@ def _prune_orphaned_branches(repo_root: str) -> None:
 # ============================================================================
 
 # Color palette (hex colors for Rich markup):
-# - Gold: #FFD700 (headers, highlights)
-# - Amber: #FFBF00 (secondary highlights)
-# - Bronze: #CD7F32 (tertiary elements)
-# - Light: #FFF8DC (text)
-# - Dim: #B8860B (muted text)
+# - Mint: #B9FFD1 (headers, highlights)
+# - Leaf: #8FFFA8 (secondary highlights)
+# - Stem: #7CFF9B (borders and rules)
+# - Light: #E8FFE9 (text)
+# - Dim: #5EA66B (muted text)
 
 # ANSI building blocks for conversation display
-_ACCENT_ANSI_DEFAULT = "\033[1;38;2;255;215;0m"  # True-color #FFD700 bold — fallback
+_ACCENT_ANSI_DEFAULT = "\033[1;38;2;185;255;209m"  # True-color #B9FFD1 bold — fallback
 _BOLD = "\033[1m"
 _RST = "\033[0m"
 _STREAM_PAD = "    "  # 4-space indent for streamed response text (matches Panel padding)
@@ -1487,7 +1487,7 @@ def _hex_to_ansi(hex_color: str, *, bold: bool = False) -> str:
 # Light/dark terminal mode detection.
 #
 # Mirrors ui-tui/src/theme.ts detectLightMode().  Used to decide whether
-# to remap "near-white" skin colors (e.g. #FFF8DC banner_text, #B8860B
+# to remap "near-white" skin colors (e.g. #E8FFE9 banner_text, #5EA66B
 # banner_dim) to darker equivalents that are readable on a light
 # Terminal.app / iTerm2 background.
 #
@@ -1656,6 +1656,12 @@ def _detect_light_mode() -> bool:
 _LIGHT_MODE_REMAP: dict[str, str] = {
     # Original (dark-mode) -> Light-mode replacement (darker, readable)
     "#FFF8DC": "#1A1A1A",   # cornsilk -> near-black
+    "#E8FFE9": "#102217",   # mint white -> deep green
+    "#B9FFD1": "#0D5F2A",   # pale mint -> forest green
+    "#8FFFA8": "#087A32",   # light leaf -> dark leaf
+    "#7CFF9B": "#0B6B2B",   # bright stem -> dark stem
+    "#5EA66B": "#315F3A",   # muted leaf -> readable green
+    "#A6F4B8": "#176B31",   # label mint -> dark label
     "#FFD700": "#9A6B00",   # gold -> dark goldenrod (readable on cream)
     "#FFBF00": "#8A5A00",   # amber -> dark amber
     "#B8860B": "#5C4500",   # dark goldenrod -> deeper brown (more contrast)
@@ -2651,30 +2657,28 @@ class ChatConsole:
         """
         yield self
 
-# ASCII Art - TRIBAL-AGENT logo (full width, single line - requires ~95 char terminal)
-TRIBAL_AGENT_LOGO = """[bold #FFD700]██╗  ██╗███████╗██████╗ ███╗   ███╗███████╗███████╗       █████╗  ██████╗ ███████╗███╗   ██╗████████╗[/]
-[bold #FFD700]██║  ██║██╔════╝██╔══██╗████╗ ████║██╔════╝██╔════╝      ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝[/]
-[#FFBF00]███████║█████╗  ██████╔╝██╔████╔██║█████╗  ███████╗█████╗███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║[/]
-[#FFBF00]██╔══██║██╔══╝  ██╔══██╗██║╚██╔╝██║██╔══╝  ╚════██║╚════╝██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║[/]
-[#CD7F32]██║  ██║███████╗██║  ██║██║ ╚═╝ ██║███████╗███████║      ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║[/]
-[#CD7F32]╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝      ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝[/]"""
+# ASCII Art - TRIBAL logo (full width, single line - requires ~60 char terminal)
+TRIBAL_AGENT_LOGO = """[bold #B9FFD1]████████╗██████╗ ██╗██████╗  █████╗ ██╗[/]
+[bold #B9FFD1]╚══██╔══╝██╔══██╗██║██╔══██╗██╔══██╗██║[/]
+[#8FFFA8]   ██║   ██████╔╝██║██████╔╝███████║██║[/]
+[#8FFFA8]   ██║   ██╔══██╗██║██╔══██╗██╔══██║██║[/]
+[#7CFF9B]   ██║   ██║  ██║██║██████╔╝██║  ██║███████╗[/]
+[#5EA66B]   ╚═╝   ╚═╝  ╚═╝╚═╝╚═════╝ ╚═╝  ╚═╝╚══════╝[/]
+[dim #5EA66B]        autonomous agent collectives // genesis[/]"""
 
-# ASCII Art - Tribal Caduceus (compact, fits in left panel)
-TRIBAL_CADUCEUS = """[#CD7F32]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⡀⠀⣀⣀⠀⢀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#CD7F32]⠀⠀⠀⠀⠀⠀⢀⣠⣴⣾⣿⣿⣇⠸⣿⣿⠇⣸⣿⣿⣷⣦⣄⡀⠀⠀⠀⠀⠀⠀[/]
-[#FFBF00]⠀⢀⣠⣴⣶⠿⠋⣩⡿⣿⡿⠻⣿⡇⢠⡄⢸⣿⠟⢿⣿⢿⣍⠙⠿⣶⣦⣄⡀⠀[/]
-[#FFBF00]⠀⠀⠉⠉⠁⠶⠟⠋⠀⠉⠀⢀⣈⣁⡈⢁⣈⣁⡀⠀⠉⠀⠙⠻⠶⠈⠉⠉⠀⠀[/]
-[#FFD700]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⡿⠛⢁⡈⠛⢿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#FFD700]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠿⣿⣦⣤⣈⠁⢠⣴⣿⠿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#FFBF00]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠻⢿⣿⣦⡉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#FFBF00]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢷⣦⣈⠛⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#CD7F32]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣴⠦⠈⠙⠿⣦⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#CD7F32]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣤⡈⠁⢤⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#B8860B]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠷⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#B8860B]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⠑⢶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#B8860B]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠁⢰⡆⠈⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#B8860B]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⠈⣡⠞⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
-[#B8860B]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]"""
+# ASCII Art - Tribal mark (compact, fits in left panel)
+TRIBAL_MARK = """[#5EA66B]          /\\          [/]
+[#7CFF9B]      /\\ /  \\ /\\      [/]
+[#8FFFA8]   <> /  \\/  \\ <>   [/]
+[#B9FFD1]      \\  /\\  /      [/]
+[#8FFFA8]   <>--\\/  \\/--<>   [/]
+[#7CFF9B]        \\    /       [/]
+[#5EA66B]         |  |        [/]
+[#3B7F4C]      ___|  |___     [/]
+[#5EA66B]     /__ GENESIS _\\  [/]
+[#7CFF9B]        /\\    /\\      [/]
+[#8FFFA8]       /  \\__/  \\     [/]
+[#5EA66B]       \\__/  \\__/     [/]"""
 
 
 
@@ -2687,9 +2691,9 @@ def _build_compact_banner() -> str:
         _skin = None
 
     skin_name = getattr(_skin, "name", "default") if _skin else "default"
-    border_color = _skin.get_color("banner_border", "#FFD700") if _skin else "#FFD700"
-    title_color = _skin.get_color("banner_title", "#FFBF00") if _skin else "#FFBF00"
-    dim_color = _skin.get_color("banner_dim", "#B8860B") if _skin else "#B8860B"
+    border_color = _skin.get_color("banner_border", "#7CFF9B") if _skin else "#7CFF9B"
+    title_color = _skin.get_color("banner_title", "#B9FFD1") if _skin else "#B9FFD1"
+    dim_color = _skin.get_color("banner_dim", "#5EA66B") if _skin else "#5EA66B"
 
     if skin_name == "default":
         line1 = "TRIBAL GENESIS - Agent Collective Runtime"
@@ -3749,12 +3753,12 @@ class TribalCLI:
 
             yolo_active = self._is_session_yolo_active()
             if width < 52:
-                text = f"⚕ {snapshot['model_short']} · {duration_label}"
+                text = f"◆ {snapshot['model_short']} · {duration_label}"
                 if yolo_active:
                     text += " · ⚠ YOLO"
                 return self._trim_status_bar_text(text, width)
             if width < 76:
-                parts = [f"⚕ {snapshot['model_short']}", percent_label]
+                parts = [f"◆ {snapshot['model_short']}", percent_label]
                 compressions = snapshot.get("compressions", 0)
                 if compressions:
                     parts.append(f"🗜️ {compressions}")
@@ -3777,7 +3781,7 @@ class TribalCLI:
                 context_label = "ctx --"
 
             compressions = snapshot.get("compressions", 0)
-            parts = [f"⚕ {snapshot['model_short']}", context_label, percent_label]
+            parts = [f"◆ {snapshot['model_short']}", context_label, percent_label]
             if compressions:
                 parts.append(f"🗜️ {compressions}")
             bg_count = snapshot.get("active_background_tasks", 0)
@@ -3794,7 +3798,7 @@ class TribalCLI:
                 parts.append("⚠ YOLO")
             return self._trim_status_bar_text(" │ ".join(parts), width)
         except Exception:
-            return f"⚕ {self.model if getattr(self, 'model', None) else 'Tribal'}"
+            return f"◆ {self.model if getattr(self, 'model', None) else 'Tribal'}"
 
     def _get_status_bar_fragments(self):
         if not self._status_bar_visible or getattr(self, '_model_picker_state', None):
@@ -3812,7 +3816,7 @@ class TribalCLI:
 
             if width < 52:
                 frags = [
-                    ("class:status-bar", " ⚕ "),
+                    ("class:status-bar", " ◆ "),
                     ("class:status-bar-strong", snapshot["model_short"]),
                     ("class:status-bar-dim", " · "),
                     ("class:status-bar-dim", duration_label),
@@ -3829,7 +3833,7 @@ class TribalCLI:
                     bg_count = snapshot.get("active_background_tasks", 0)
                     bg_proc_count = snapshot.get("active_background_processes", 0)
                     frags = [
-                        ("class:status-bar", " ⚕ "),
+                        ("class:status-bar", " ◆ "),
                         ("class:status-bar-strong", snapshot["model_short"]),
                         ("class:status-bar-dim", " · "),
                         (self._status_bar_context_style(percent), percent_label),
@@ -3864,7 +3868,7 @@ class TribalCLI:
                     bg_count = snapshot.get("active_background_tasks", 0)
                     bg_proc_count = snapshot.get("active_background_processes", 0)
                     frags = [
-                        ("class:status-bar", " ⚕ "),
+                        ("class:status-bar", " ◆ "),
                         ("class:status-bar-strong", snapshot["model_short"]),
                         ("class:status-bar-dim", " │ "),
                         ("class:status-bar-dim", context_label),
@@ -4393,11 +4397,11 @@ class TribalCLI:
             try:
                 from tribal_cli.skin_engine import get_active_skin
                 _skin = get_active_skin()
-                label = _skin.get_branding("response_label", "⚕ Tribal")
-                _text_hex = _skin.get_color("banner_text", "#FFF8DC")
+                label = _skin.get_branding("response_label", "◆ Tribal")
+                _text_hex = _skin.get_color("banner_text", "#E8FFE9")
             except Exception:
-                label = "⚕ Tribal"
-                _text_hex = "#FFF8DC"
+                label = "◆ Tribal"
+                _text_hex = "#E8FFE9"
             # Build a true-color ANSI escape for the response text color
             # so streamed content matches the Rich Panel appearance.
             try:
@@ -5059,7 +5063,7 @@ class TribalCLI:
         if hasattr(self, 'agent') and self.agent and hasattr(self.agent, 'context_compressor'):
             ctx_len = self.agent.context_compressor.context_length
         
-        # Auto-compact for narrow terminals — the full banner with caduceus
+        # Auto-compact for narrow terminals — the full banner with hero art
         # + tool list needs ~80 columns minimum to render without wrapping.
         term_width = shutil.get_terminal_size().columns
         use_compact = self.compact or term_width < 80
@@ -5897,11 +5901,11 @@ class TribalCLI:
         try:
             from tribal_cli.skin_engine import get_active_skin
             skin = get_active_skin()
-            separator_color = skin.get_color("banner_dim", "#B8860B")
-            accent_color = skin.get_color("ui_accent", "#FFBF00")
-            label_color = skin.get_color("ui_label", "#DAA520")
+            separator_color = skin.get_color("banner_dim", "#5EA66B")
+            accent_color = skin.get_color("ui_accent", "#8FFFA8")
+            label_color = skin.get_color("ui_label", "#A6F4B8")
         except Exception:
-            separator_color, accent_color, label_color = "#B8860B", "#FFBF00", "cyan"
+            separator_color, accent_color, label_color = "#5EA66B", "#8FFFA8", "#A6F4B8"
         toolsets_info = ""
         if self.enabled_toolsets and "all" not in self.enabled_toolsets:
             toolsets_info = f" [dim {separator_color}]·[/] [{label_color}]toolsets: {', '.join(self.enabled_toolsets)}[/]"
@@ -8895,13 +8899,13 @@ class TribalCLI:
                     try:
                         from tribal_cli.skin_engine import get_active_skin
                         _skin = get_active_skin()
-                        label = _skin.get_branding("response_label", "⚕ Tribal")
-                        _resp_color = _maybe_remap_for_light_mode(_skin.get_color("response_border", "#CD7F32"))
-                        _resp_text = _maybe_remap_for_light_mode(_skin.get_color("banner_text", "#FFF8DC"))
+                        label = _skin.get_branding("response_label", "◆ Tribal")
+                        _resp_color = _maybe_remap_for_light_mode(_skin.get_color("response_border", "#7CFF9B"))
+                        _resp_text = _maybe_remap_for_light_mode(_skin.get_color("banner_text", "#E8FFE9"))
                     except Exception:
-                        label = "⚕ Tribal"
-                        _resp_color = "#CD7F32"
-                        _resp_text = "#FFF8DC"
+                        label = "◆ Tribal"
+                        _resp_color = "#7CFF9B"
+                        _resp_text = "#E8FFE9"
 
                     _chat_console = ChatConsole()
                     _chat_console.print(Panel(
@@ -9999,7 +10003,7 @@ class TribalCLI:
             ("cancel", "Cancel", "keep the current session"),
         ]
         raw = self._prompt_text_input_modal(
-            title="⚕  Update Tribal Agent",
+            title="◆  Update Tribal Agent",
             detail="This will exit the current session and run `tribal update`.",
             choices=choices,
         )
@@ -10012,7 +10016,7 @@ class TribalCLI:
             return False
 
         print()
-        print("  ⚕ Launching update...")
+        print("  ◆ Launching update...")
         print()
 
         # Store the relaunch args so run() can exec them from the main thread
@@ -11800,7 +11804,7 @@ class TribalCLI:
                     if not _streaming_box_opened:
                         _streaming_box_opened = True
                         w = self._scrollback_box_width(getattr(self.console, "width", 80))
-                        label = " ⚕ Tribal "
+                        label = " ◆ Tribal "
                         if self.show_timestamps:
                             label = f"{label}{datetime.now().strftime('%H:%M')} "
                         fill = w - 2 - TribalCLI._status_bar_display_width(label)
@@ -12130,13 +12134,13 @@ class TribalCLI:
                 try:
                     from tribal_cli.skin_engine import get_active_skin
                     _skin = get_active_skin()
-                    label = _skin.get_branding("response_label", "⚕ Tribal")
-                    _resp_color = _maybe_remap_for_light_mode(_skin.get_color("response_border", "#CD7F32"))
-                    _resp_text = _maybe_remap_for_light_mode(_skin.get_color("banner_text", "#FFF8DC"))
+                    label = _skin.get_branding("response_label", "◆ Tribal")
+                    _resp_color = _maybe_remap_for_light_mode(_skin.get_color("response_border", "#7CFF9B"))
+                    _resp_text = _maybe_remap_for_light_mode(_skin.get_color("banner_text", "#E8FFE9"))
                 except Exception:
-                    label = "⚕ Tribal"
-                    _resp_color = _maybe_remap_for_light_mode("#CD7F32")
-                    _resp_text = _maybe_remap_for_light_mode("#FFF8DC")
+                    label = "◆ Tribal"
+                    _resp_color = _maybe_remap_for_light_mode("#7CFF9B")
+                    _resp_text = _maybe_remap_for_light_mode("#E8FFE9")
 
                 is_error_response = result and (result.get("failed") or result.get("partial"))
                 already_streamed = self._stream_started and self._stream_box_opened and not is_error_response
@@ -12287,9 +12291,9 @@ class TribalCLI:
         else:
             try:
                 from tribal_cli.skin_engine import get_active_goodbye
-                goodbye = get_active_goodbye("Goodbye! ⚕")
+                goodbye = get_active_goodbye("Goodbye! ◆")
             except Exception:
-                goodbye = "Goodbye! ⚕"
+                goodbye = "Goodbye! ◆"
             print(goodbye)
 
     def _get_tui_prompt_symbols(self) -> tuple[str, str]:
@@ -12378,7 +12382,7 @@ class TribalCLI:
         if self._command_running:
             return _state_fragment("class:prompt-working", self._command_spinner_frame())
         if self._agent_running:
-            return _state_fragment("class:prompt-working", "⚕")
+            return _state_fragment("class:prompt-working", "◆")
         if self._voice_mode:
             return _state_fragment("class:voice-prompt", "🎤")
         return [("class:prompt", symbol)]
@@ -14275,50 +14279,50 @@ class TribalCLI:
             # Input area / prompt: empty style strings inherit the
             # terminal's default foreground/background, so the typed
             # text is readable in both light and dark Terminal.app
-            # color schemes.  (Hardcoding a near-white #FFF8DC made
+            # color schemes.  (Hardcoding near-white skin colors made
             # input invisible on light backgrounds.)
             'input-area': '',
             'placeholder': '#888888 italic',
             'prompt': '',
             'prompt-working': '#888888 italic',
             'hint': '#888888 italic',
-            'status-bar': 'bg:#1a1a2e #C0C0C0',
-            'status-bar-strong': 'bg:#1a1a2e #FFD700 bold',
-            'status-bar-dim': 'bg:#1a1a2e #8B8682',
-            'status-bar-good': 'bg:#1a1a2e #8FBC8F bold',
-            'status-bar-warn': 'bg:#1a1a2e #FFD700 bold',
-            'status-bar-bad': 'bg:#1a1a2e #FF8C00 bold',
-            'status-bar-critical': 'bg:#1a1a2e #FF6B6B bold',
-            'status-bar-yolo': 'bg:#1a1a2e #FF4444 bold',
-            # Bronze horizontal rules around the input area
-            'input-rule': '#CD7F32',
+            'status-bar': 'bg:#07140B #D9FFE1',
+            'status-bar-strong': 'bg:#07140B #B9FFD1 bold',
+            'status-bar-dim': 'bg:#07140B #5EA66B',
+            'status-bar-good': 'bg:#07140B #8FFFA8 bold',
+            'status-bar-warn': 'bg:#07140B #B9FFD1 bold',
+            'status-bar-bad': 'bg:#07140B #F6C35B bold',
+            'status-bar-critical': 'bg:#07140B #FF6B6B bold',
+            'status-bar-yolo': 'bg:#07140B #FF4444 bold',
+            # Green horizontal rules around the input area
+            'input-rule': '#7CFF9B',
             # Clipboard image attachment badges
             'image-badge': '#87CEEB bold',
-            'completion-menu': 'bg:#1a1a2e #FFF8DC',
-            'completion-menu.completion': 'bg:#1a1a2e #FFF8DC',
-            'completion-menu.completion.current': 'bg:#333355 #FFD700',
-            'completion-menu.meta.completion': 'bg:#1a1a2e #888888',
-            'completion-menu.meta.completion.current': 'bg:#333355 #FFBF00',
+            'completion-menu': 'bg:#07140B #E8FFE9',
+            'completion-menu.completion': 'bg:#07140B #E8FFE9',
+            'completion-menu.completion.current': 'bg:#12351D #B9FFD1',
+            'completion-menu.meta.completion': 'bg:#0B1F11 #5EA66B',
+            'completion-menu.meta.completion.current': 'bg:#174725 #8FFFA8',
             # Clarify question panel
-            'clarify-border': '#CD7F32',
-            'clarify-title': '#FFD700 bold',
-            'clarify-question': '#FFF8DC bold',
+            'clarify-border': '#7CFF9B',
+            'clarify-title': '#B9FFD1 bold',
+            'clarify-question': '#E8FFE9 bold',
             'clarify-choice': '#AAAAAA',
-            'clarify-selected': '#FFD700 bold',
-            'clarify-active-other': '#FFD700 italic',
-            'clarify-countdown': '#CD7F32',
+            'clarify-selected': '#B9FFD1 bold',
+            'clarify-active-other': '#B9FFD1 italic',
+            'clarify-countdown': '#7CFF9B',
             # Sudo password panel
             'sudo-prompt': '#FF6B6B bold',
-            'sudo-border': '#CD7F32',
+            'sudo-border': '#7CFF9B',
             'sudo-title': '#FF6B6B bold',
-            'sudo-text': '#FFF8DC',
+            'sudo-text': '#E8FFE9',
             # Dangerous command approval panel
-            'approval-border': '#CD7F32',
+            'approval-border': '#7CFF9B',
             'approval-title': '#FF8C00 bold',
-            'approval-desc': '#FFF8DC bold',
+            'approval-desc': '#E8FFE9 bold',
             'approval-cmd': '#AAAAAA italic',
             'approval-choice': '#AAAAAA',
-            'approval-selected': '#FFD700 bold',
+            'approval-selected': '#B9FFD1 bold',
             # Voice mode
             'voice-prompt': '#87CEEB',
             'voice-recording': '#FF4444 bold',

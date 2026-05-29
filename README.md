@@ -1,5 +1,7 @@
 # Tribal
 
+![Tribal Genesis terminal banner](assets/banner.png)
+
 **Tribal is an open-source runtime for autonomous agent collectives.**
 
 Tribal Genesis is the foundation release of the Tribal runtime. It ships a self-improving agent loop, skills, memory, tools, messaging gateway, cron scheduler, TUI, dashboard, ACP, MCP, and plugin architecture while setting the project direction around coordinated agent societies.
