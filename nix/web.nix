@@ -4,7 +4,7 @@ let
   src = ../web;
   npmDeps = pkgs.fetchNpmDeps {
     inherit src;
-    hash = "sha256-6qhGuifHVtCeep1SiQdCUxBMr7UGhYpdMTvXhrQu/zA=";
+    hash = "sha256-HGyF8Uu87b3/AakZDSPrtfGuo6McscDJFZbV2+1SOWA=";
   };
 
   npm = triibalNpmLib.mkNpmPassthru { folder = "web"; attr = "web"; pname = "triibal-web"; };
