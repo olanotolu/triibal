@@ -4,7 +4,7 @@ let
   src = ../ui-tui;
   npmDeps = pkgs.fetchNpmDeps {
     inherit src;
-    hash = "sha256-FyzS39ObGhiVTll2KKlgc0rHigaskTId0iAaEAszvhk=";
+    hash = "sha256-PfmNH6yYEvR7ahwVRwjAkpOfMu5jlRYi6HL9NrKAbZI=";
   };
 
   npm = tribalNpmLib.mkNpmPassthru { folder = "ui-tui"; attr = "tui"; pname = "tribal-tui"; };
