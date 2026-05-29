@@ -4,7 +4,7 @@ let
   src = ../ui-tui;
   npmDeps = pkgs.fetchNpmDeps {
     inherit src;
-    hash = "sha256-2U08tj8FFoSupsJNlDkz+7VmXNhVud6xumhiUQEHaQw=";
+    hash = "sha256-FyzS39ObGhiVTll2KKlgc0rHigaskTId0iAaEAszvhk=";
   };
 
   npm = triibalNpmLib.mkNpmPassthru { folder = "ui-tui"; attr = "tui"; pname = "triibal-tui"; };
