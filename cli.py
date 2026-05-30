@@ -8334,6 +8334,15 @@ class TribalCLI:
             return False
         elif canonical == "help":
             self.show_help()
+        elif canonical == "genesis":
+            from tribal_cli.genesis import (
+                GenesisConfirmationError,
+                handle_genesis_slash_command,
+            )
+            try:
+                self._console_print(handle_genesis_slash_command(cmd_original))
+            except GenesisConfirmationError as e:
+                self._console_print(str(e))
         elif canonical == "profile":
             self._handle_profile_command()
         elif canonical == "tools":

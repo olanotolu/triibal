@@ -102,6 +102,11 @@ COMMAND_REGISTRY: list[CommandDef] = [
                aliases=("tasks",)),
     CommandDef("queue", "Queue a prompt for the next turn (doesn't interrupt)", "Session",
                aliases=("q",), args_hint="<prompt>"),
+
+    # Tribal
+    CommandDef("genesis", "Birth or inspect this Tribal agent's founding tribe", "Tribal",
+               args_hint="[--domain id] [--rebirth]", cli_only=True),
+
     CommandDef("steer", "Inject a message after the next tool call without interrupting", "Session",
                args_hint="<prompt>"),
     CommandDef("goal", "Set a standing goal Tribal works on across turns until achieved", "Session",

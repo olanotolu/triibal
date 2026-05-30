@@ -10980,6 +10980,15 @@ def cmd_logs(args):
     )
 
 
+def cmd_genesis(args):
+    """Birth or inspect the current Tribal home."""
+    from tribal_cli.genesis import cmd_genesis as _cmd_genesis
+
+    code = _cmd_genesis(args)
+    if code:
+        sys.exit(code)
+
+
 def _build_provider_choices() -> list[str]:
     """Build the --provider choices list from CANONICAL_PROVIDERS + 'auto'."""
     try:
@@ -11010,7 +11019,7 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "acp", "auth", "backup", "bundles", "checkpoints", "claw", "completion",
         "computer-use",
         "config", "cron", "curator", "dashboard", "debug", "doctor",
-        "dump", "fallback", "gateway", "hooks", "import", "insights",
+        "dump", "fallback", "gateway", "genesis", "hooks", "import", "insights",
         "kanban", "login", "logout", "logs", "lsp", "mcp", "memory", "migrate",
         "model", "pairing", "plugins", "portal", "postinstall", "profile", "proxy",
         "send", "sessions", "setup",
@@ -13702,6 +13711,41 @@ Examples:
         claw_command(args)
 
     claw_parser.set_defaults(func=cmd_claw)
+
+    # =========================================================================
+    # genesis command
+    # =========================================================================
+    genesis_parser = subparsers.add_parser(
+        "genesis",
+        help="Birth or inspect this Tribal agent's founding tribe",
+        description=(
+            "Create the Genesis birth certificate, tribe scaffold, SOUL.md, "
+            "empty lemma store, and lineage block for this Tribal home."
+        ),
+    )
+    genesis_parser.add_argument(
+        "--domain",
+        default=None,
+        help="Tribe/domain id to birth, e.g. hospitality.nyc.fnb (default: local)",
+    )
+    genesis_parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Print machine-readable Genesis status JSON",
+    )
+    genesis_parser.add_argument(
+        "--rebirth",
+        action="store_true",
+        default=False,
+        help="Archive current Genesis state and birth a new lineage after confirmation",
+    )
+    genesis_parser.add_argument(
+        "--confirm",
+        default=None,
+        help='Exact confirmation phrase for rebirth, e.g. "REBIRTH local"',
+    )
+    genesis_parser.set_defaults(func=cmd_genesis)
 
     # =========================================================================
     # version command

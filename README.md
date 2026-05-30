@@ -59,9 +59,12 @@ tribal dashboard    # Start the local web dashboard
 tribal model        # Choose a model provider
 tribal tools        # Configure enabled tools
 tribal setup        # Run setup
+tribal genesis      # Birth this agent's founding tribe and lineage
 tribal gateway      # Run messaging gateway
 tribal doctor       # Diagnose local configuration
 ```
+
+`tribal genesis` is the difference between an agent on its first day and one born with lineage.
 
 ## Upstream Attribution
 
