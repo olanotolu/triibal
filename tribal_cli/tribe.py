@@ -417,7 +417,16 @@ def _extract_falsifiers(skeptic_summary: str) -> list[str]:
         falsifiers.append("If forecast numbers lack evidence, strip them from lore.")
     if not falsifiers:
         falsifiers.append("If lived results contradict the decision, demote the lemma.")
-    return falsifiers[:3]
+
+    unique: list[str] = []
+    seen: set[str] = set()
+    for item in falsifiers:
+        key = re.sub(r"\s+", " ", item.strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+    return unique[:3]
 
 
 def _build_closure(question: str, roles: list[dict[str, Any]]) -> dict[str, Any]:

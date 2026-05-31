@@ -231,6 +231,16 @@ class TestTribeCouncilRuntime:
         assert skeptic["status"] == "fallback"
         assert "demo ships and nobody cares" in skeptic["summary"]
 
+    def test_falsifiers_are_deduplicated(self):
+        from tribal_cli.tribe import _extract_falsifiers
+
+        falsifiers = _extract_falsifiers(
+            "What if the council is solving the wrong problem? "
+            "Treat the decision as an experiment and define the result that would prove it wrong."
+        )
+
+        assert falsifiers == ["If the council is solving the wrong problem, weaken or revise this council decision."]
+
     def test_law_limits_draft_lemmas(self, tmp_path):
         from tribal_cli.tribe import run_tribe_ask
 
