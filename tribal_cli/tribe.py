@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import shlex
 import sys
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +27,8 @@ from utils import atomic_yaml_write
 
 
 SCHEMA_VERSION = 1
+DEFAULT_COUNCIL_MAX_ITERATIONS = 1
+DEFAULT_COUNCIL_CHILD_TIMEOUT_SECONDS = 30
 ROLE_NAMES = ("Scout", "Elder", "Oracle", "Skeptic", "Keeper")
 
 
@@ -134,6 +139,70 @@ def _delegate_runner(agent: Any | None, delegate_runner: DelegateRunner | None) 
     raise TribeCouncilError("`/tribe ask` needs an initialized Tribal agent.")
 
 
+def _env_int(name: str, default: int, *, floor: int) -> int:
+    raw = os.getenv(name)
+    if not raw:
+        return default
+    try:
+        return max(floor, int(raw))
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_float(name: str, default: float, *, floor: float) -> float:
+    raw = os.getenv(name)
+    if not raw:
+        return default
+    try:
+        return max(floor, float(raw))
+    except (TypeError, ValueError):
+        return default
+
+
+@contextmanager
+def _council_delegation_budget():
+    """Keep live council asks fast without changing persistent user config."""
+    try:
+        import cli as cli_module
+
+        config = getattr(cli_module, "CLI_CONFIG", None)
+    except Exception:
+        config = None
+    if not isinstance(config, dict):
+        yield
+        return
+
+    delegation = config.setdefault("delegation", {})
+    if not isinstance(delegation, dict):
+        yield
+        return
+
+    marker = object()
+    old_max = delegation.get("max_iterations", marker)
+    old_timeout = delegation.get("child_timeout_seconds", marker)
+    delegation["max_iterations"] = _env_int(
+        "TRIBAL_COUNCIL_MAX_ITERATIONS",
+        DEFAULT_COUNCIL_MAX_ITERATIONS,
+        floor=1,
+    )
+    delegation["child_timeout_seconds"] = _env_float(
+        "TRIBAL_COUNCIL_CHILD_TIMEOUT_SECONDS",
+        DEFAULT_COUNCIL_CHILD_TIMEOUT_SECONDS,
+        floor=30.0,
+    )
+    try:
+        yield
+    finally:
+        if old_max is marker:
+            delegation.pop("max_iterations", None)
+        else:
+            delegation["max_iterations"] = old_max
+        if old_timeout is marker:
+            delegation.pop("child_timeout_seconds", None)
+        else:
+            delegation["child_timeout_seconds"] = old_timeout
+
+
 def _delegate_results(raw: str, roles: list[str]) -> list[dict[str, Any]]:
     try:
         payload = json.loads(raw)
@@ -167,10 +236,17 @@ def _parse_role_summary(value: Any) -> tuple[str, dict[str, Any]]:
         parsed = value
     else:
         text = str(value or "").strip()
+        fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+        if fenced:
+            text = fenced.group(1).strip()
+        elif text.startswith("```"):
+            lines = text.splitlines()
+            if len(lines) >= 3 and lines[0].startswith("```") and lines[-1].strip() == "```":
+                text = "\n".join(lines[1:-1]).strip()
         try:
             loaded = json.loads(text)
         except json.JSONDecodeError:
-            return text, {}
+            return str(value or "").strip(), {}
         parsed = loaded if isinstance(loaded, dict) else {}
     summary = str(parsed.get("summary") or parsed.get("answer") or value or "").strip()
     return summary, parsed
@@ -179,7 +255,17 @@ def _parse_role_summary(value: Any) -> tuple[str, dict[str, Any]]:
 def _lore_context(lore_rows: list[dict[str, Any]]) -> str:
     if not lore_rows:
         return "No existing lore yet. Say this plainly; do not borrow elder authority."
-    preview = lore_rows[-8:]
+    preview = []
+    for row in lore_rows[-5:]:
+        claim = row.get("claim") or row.get("title") or row.get("summary") or ""
+        claim = str(claim).replace("\n", " ").strip()
+        if len(claim) > 240:
+            claim = claim[:237].rstrip() + "..."
+        preview.append({
+            "id": row.get("id"),
+            "status": row.get("status"),
+            "claim": claim,
+        })
     return "Existing lore tail:\n" + json.dumps(preview, ensure_ascii=False, indent=2)
 
 
@@ -187,29 +273,29 @@ def _wave_one_tasks(question: str, tribe_id: str, lore_rows: list[dict[str, Any]
     shared = (
         f"Tribe: {tribe_id}\n"
         f"Question: {question}\n"
-        "Return compact JSON with keys: summary, draft_lemmas.\n"
-        "Draft lemmas must be falsifiable candidate patterns, never canon."
+        "Return JSON only, no markdown fences, with keys: summary, draft_lemmas.\n"
+        "Keep summary under 90 words. Use draft_lemmas only for falsifiable candidate patterns, never canon."
     )
     return [
         {
             "role_name": "Scout",
-            "goal": "Scout role for a Tribal council: gather live signal and immediate context.",
+            "goal": "Scout role for a Tribal council: gather immediate signal from the question. No tools. One turn.",
             "context": shared,
-            "toolsets": ["file", "web", "browser"],
+            "toolsets": [],
             "role": "leaf",
         },
         {
             "role_name": "Elder",
-            "goal": "Elder role for a Tribal council: weigh the question against existing lore.",
+            "goal": "Elder role for a Tribal council: weigh the question against existing lore. No tools. One turn.",
             "context": shared + "\n\n" + _lore_context(lore_rows),
-            "toolsets": ["file"],
+            "toolsets": [],
             "role": "leaf",
         },
         {
             "role_name": "Oracle",
-            "goal": "Oracle role for a Tribal council: project likely outcomes in text simulation.",
+            "goal": "Oracle role for a Tribal council: project likely outcomes in text simulation. No tools. One turn.",
             "context": shared + "\nMiroFish status: planned_v2; do not claim a real MiroFish run occurred.",
-            "toolsets": ["file"],
+            "toolsets": [],
             "role": "leaf",
         },
     ]
@@ -222,10 +308,11 @@ def _skeptic_args(question: str, tribe_id: str, role_rows: list[dict[str, Any]])
         "context": (
             f"Tribe: {tribe_id}\nQuestion: {question}\n\n"
             f"Council so far:\n{role_text}\n\n"
-            "Return compact JSON with keys: summary, draft_lemmas. "
+            "Return JSON only, no markdown fences, with keys: summary, draft_lemmas. "
+            "Keep summary under 90 words. "
             "Reject canon claims and preserve only folklore-worthy candidates."
         ),
-        "toolsets": ["file"],
+        "toolsets": [],
         "role": "leaf",
     }
 
@@ -258,9 +345,14 @@ def _draft_lemmas(
         for draft in drafts:
             if len(written) >= max_drafts:
                 return written
-            if not isinstance(draft, dict):
+            if isinstance(draft, str):
+                claim = draft.strip()
+                confidence = None
+            elif isinstance(draft, dict):
+                claim = str(draft.get("claim") or draft.get("title") or draft.get("body") or "").strip()
+                confidence = draft.get("confidence")
+            else:
                 continue
-            claim = str(draft.get("claim") or "").strip()
             if not claim or claim in seen_claims:
                 continue
             seen_claims.add(claim)
@@ -273,7 +365,7 @@ def _draft_lemmas(
                 "created_at": _iso_z(now),
                 "source": {"type": "council", "council_id": council_id, "role": role["name"]},
                 "evidence": [{"role": role["name"], "summary": role.get("summary", "")}],
-                "confidence": draft.get("confidence"),
+                "confidence": confidence,
                 "promotion": {"status": "unvalidated"},
             }
             _append_jsonl(home / "lore" / "lemmas.jsonl", lemma)
@@ -314,10 +406,11 @@ def run_tribe_ask(
     lore_rows = _read_jsonl(home_path / "lore" / "lemmas.jsonl")
     council_id = f"council_{_stamp(now).lower()}_{uuid.uuid4().hex[:8]}"
 
-    wave_one_raw = runner({"tasks": _wave_one_tasks(question, tribe_id, lore_rows)})
-    wave_one_roles = _delegate_results(wave_one_raw, ["Scout", "Elder", "Oracle"])
-    skeptic_raw = runner(_skeptic_args(question, tribe_id, wave_one_roles))
-    skeptic_role = _delegate_results(skeptic_raw, ["Skeptic"])
+    with _council_delegation_budget():
+        wave_one_raw = runner({"tasks": _wave_one_tasks(question, tribe_id, lore_rows)})
+        wave_one_roles = _delegate_results(wave_one_raw, ["Scout", "Elder", "Oracle"])
+        skeptic_raw = runner(_skeptic_args(question, tribe_id, wave_one_roles))
+        skeptic_role = _delegate_results(skeptic_raw, ["Skeptic"])
     roles = wave_one_roles + skeptic_role
 
     draft_ids = _draft_lemmas(
@@ -475,7 +568,14 @@ def cmd_tribe(args: argparse.Namespace) -> int:
                 max_turns=getattr(args, "max_turns", None),
                 ignore_rules=getattr(args, "ignore_rules", False),
             )
-            if not cli._initialize_agent():
+            if not cli._ensure_runtime_credentials():
+                return 1
+            turn_route = cli._resolve_turn_agent_config(question)
+            if not cli._init_agent(
+                model_override=turn_route["model"],
+                runtime_override=turn_route["runtime"],
+                request_overrides=turn_route.get("request_overrides"),
+            ):
                 return 1
             result = run_tribe_ask(question, agent=cli.agent)
             print(render_tribe_result(result, json_output=json_output))

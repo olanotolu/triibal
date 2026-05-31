@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 from datetime import datetime, timezone
 
 import pytest
@@ -30,16 +31,24 @@ class TestTribeCouncilRuntime:
         with pytest.raises(TribeNotBornError, match="Run `tribal genesis` first"):
             run_tribe_ask("Should I take Thursday at 4?", home=tmp_path, delegate_runner=lambda _args: "{}")
 
-    def test_tribe_ask_convenes_roles_and_persists_folklore(self, tmp_path):
+    def test_tribe_ask_convenes_roles_and_persists_folklore(self, tmp_path, monkeypatch):
+        import cli as cli_module
         from tribal_cli.tribe import render_tribe_result, run_tribe_ask
 
         _birth(tmp_path)
+        monkeypatch.setitem(cli_module.CLI_CONFIG, "delegation", {
+            "max_iterations": 50,
+            "child_timeout_seconds": 600,
+        })
         calls = []
 
         def fake_delegate(args):
+            assert cli_module.CLI_CONFIG["delegation"]["max_iterations"] == 1
+            assert cli_module.CLI_CONFIG["delegation"]["child_timeout_seconds"] == 30
             calls.append(args)
             if "tasks" in args:
                 assert [task["role_name"] for task in args["tasks"]] == ["Scout", "Elder", "Oracle"]
+                assert args["tasks"][0]["toolsets"] == []
                 elder = args["tasks"][1]
                 assert "No existing lore" in elder["context"]
                 return json.dumps({
@@ -101,6 +110,8 @@ class TestTribeCouncilRuntime:
             now=_utc(),
         )
 
+        assert cli_module.CLI_CONFIG["delegation"]["max_iterations"] == 50
+        assert cli_module.CLI_CONFIG["delegation"]["child_timeout_seconds"] == 600
         assert result.status == "convened"
         assert len(calls) == 2
         assert result.council["tribe_id"] == "personal.life"
@@ -144,6 +155,30 @@ class TestTribeCouncilRuntime:
         assert [role["name"] for role in roles.council["roles"]] == ["Scout", "Elder", "Oracle", "Skeptic", "Keeper"]
         assert "personal.life" in render_tribe_result(status)
 
+    def test_lore_context_is_compact(self):
+        from tribal_cli.tribe import _lore_context
+
+        context = _lore_context([{
+            "id": "tk_big",
+            "status": "folklore",
+            "claim": "A" * 500 + "\n" + "B" * 500,
+            "evidence": [{"large": "ignored"}],
+        }])
+
+        assert "tk_big" in context
+        assert "evidence" not in context
+        assert len(context) < 500
+
+    def test_role_summary_parses_fenced_json(self):
+        from tribal_cli.tribe import _parse_role_summary
+
+        summary, payload = _parse_role_summary(
+            'The council is too certain.\n```json\n{"summary":"Push harder.","draft_lemmas":["Consensus needs dissent."]}\n```'
+        )
+
+        assert summary == "Push harder."
+        assert payload["draft_lemmas"] == ["Consensus needs dissent."]
+
     def test_law_limits_draft_lemmas(self, tmp_path):
         from tribal_cli.tribe import run_tribe_ask
 
@@ -171,3 +206,68 @@ class TestTribeCouncilRuntime:
 
         assert len(result.council["draft_lemmas"]) == 1
         assert len(_jsonl(tmp_path / "lore" / "lemmas.jsonl")) == 1
+
+    def test_cli_tribe_ask_uses_real_init_path(self, tmp_path, monkeypatch, capsys):
+        import tribal_cli.tribe as tribe_mod
+
+        _birth(tmp_path)
+        monkeypatch.setattr(tribe_mod, "get_tribal_home", lambda: tmp_path)
+        init_calls = []
+
+        class FakeCLI:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+                self.agent = None
+
+            def _ensure_runtime_credentials(self):
+                return True
+
+            def _resolve_turn_agent_config(self, _message):
+                return {
+                    "model": "deepseek-v4-pro",
+                    "runtime": {"provider": "deepseek"},
+                    "request_overrides": {"reasoning": "minimal"},
+                    "signature": ("deepseek-v4-pro", "deepseek"),
+                }
+
+            def _init_agent(self, **kwargs):
+                init_calls.append(kwargs)
+                self.agent = object()
+                return True
+
+        monkeypatch.setattr("cli.TribalCLI", FakeCLI)
+        monkeypatch.setattr(
+            tribe_mod,
+            "run_tribe_ask",
+            lambda question, agent: SimpleNamespace(
+                status="convened",
+                home=tmp_path,
+                council={
+                    "tribe_id": "personal.life",
+                    "council_id": "council_test",
+                    "question": question,
+                    "roles": [],
+                    "consensus": {"answer": "ship the demo"},
+                    "draft_lemmas": [],
+                },
+            ),
+        )
+
+        code = tribe_mod.cmd_tribe(SimpleNamespace(
+            tribe_command="ask",
+            question=["Should", "I", "ship", "the", "demo?"],
+            json=False,
+            toolsets=None,
+            model=None,
+            provider=None,
+            max_turns=None,
+            ignore_rules=False,
+        ))
+
+        assert code == 0
+        assert init_calls == [{
+            "model_override": "deepseek-v4-pro",
+            "runtime_override": {"provider": "deepseek"},
+            "request_overrides": {"reasoning": "minimal"},
+        }]
+        assert "ship the demo" in capsys.readouterr().out

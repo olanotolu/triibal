@@ -8350,10 +8350,18 @@ class TribalCLI:
                 handle_tribe_slash_command,
             )
             try:
-                if cmd_original.strip().lower().startswith("/tribe ask") and self.agent is None:
-                    self._console_print("Initializing agent...")
-                    if not self._initialize_agent():
-                        return True
+                if cmd_original.strip().lower().startswith("/tribe ask"):
+                    if self.agent is None:
+                        if not self._ensure_runtime_credentials():
+                            return True
+                        turn_route = self._resolve_turn_agent_config(cmd_original)
+                        self._console_print("Initializing agent...")
+                        if not self._init_agent(
+                            model_override=turn_route["model"],
+                            runtime_override=turn_route["runtime"],
+                            request_overrides=turn_route.get("request_overrides"),
+                        ):
+                            return True
                 self._console_print(handle_tribe_slash_command(cmd_original, agent=self.agent))
             except (TribeCouncilError, TribeNotBornError) as e:
                 self._console_print(str(e))
