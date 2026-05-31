@@ -428,6 +428,98 @@ def run_ritual_review(
     return RitualResult(status="reviewed", home=home_path, payload=review)
 
 
+def run_ritual_apply(
+    *,
+    home: str | Path | None = None,
+    now: datetime | None = None,
+) -> RitualResult:
+    home_path = _home(home)
+    birth = _require_birth(home_path)
+    law = _ritual_law(_ensure_law(home_path))
+    now = now or _utc_now()
+    path = home_path / "lore" / "lemmas.jsonl"
+    entries = _read_lemma_entries(path)
+    tribe_id = str(birth.get("tribe_id") or "local")
+    applied: list[dict[str, Any]] = []
+    promotions = 0
+
+    for lemma in _valid_lemmas(entries):
+        recommendation, reason = _recommendation(lemma, law, now)
+        promotion = _promotion(lemma)
+        promotion["last_reviewed_at"] = _iso_z(now)
+        lemma_id = str(lemma.get("id") or "")
+        if recommendation == "promote_to_canon":
+            if promotions >= int(law["max_promotions_per_review"]):
+                continue
+            promotions += 1
+            lemma["status"] = "canon"
+            promotion["status"] = "canon"
+            promotion["canonized_at"] = _iso_z(now)
+            action = "promoted_to_canon"
+            lineage_kind = "lore.promoted"
+        elif recommendation == "mark_stale":
+            lemma["status"] = "stale"
+            promotion["status"] = "stale"
+            promotion["stale_at"] = _iso_z(now)
+            action = "marked_stale"
+            lineage_kind = "lore.marked_stale"
+        elif recommendation == "falsify":
+            if lemma.get("status") == "falsified":
+                promotion["status"] = "falsified"
+                applied.append({
+                    "lemma_id": lemma_id,
+                    "claim": lemma.get("claim", ""),
+                    "action": "already_falsified",
+                    "reason": reason,
+                })
+                continue
+            lemma["status"] = "falsified"
+            promotion["status"] = "falsified"
+            action = "falsified"
+            lineage_kind = "lore.falsified"
+        else:
+            continue
+
+        applied.append({
+            "lemma_id": lemma_id,
+            "claim": lemma.get("claim", ""),
+            "action": action,
+            "reason": reason,
+        })
+        _append_jsonl(
+            home_path / "lineage.jsonl",
+            _lineage_event(
+                lineage_kind,
+                tribe_id=tribe_id,
+                lemma_id=lemma_id,
+                now=now,
+                reason=reason,
+            ),
+        )
+
+    apply_event = {
+        "schema_version": SCHEMA_VERSION,
+        "apply_id": f"app_{_stamp(now).lower()}_{uuid.uuid4().hex[:8]}",
+        "tribe_id": tribe_id,
+        "applied_at": _iso_z(now),
+        "applied": applied,
+    }
+    _write_lemma_entries(path, entries)
+    _append_jsonl(home_path / "ritual" / "applies.jsonl", apply_event)
+    _append_jsonl(
+        home_path / "lineage.jsonl",
+        _lineage_event(
+            "ritual.applied",
+            tribe_id=tribe_id,
+            lemma_id=None,
+            now=now,
+            apply_id=apply_event["apply_id"],
+            applied=len(applied),
+        ),
+    )
+    return RitualResult(status="applied", home=home_path, payload=apply_event)
+
+
 def render_ritual_result(result: RitualResult, *, json_output: bool = False) -> str:
     if json_output:
         return json.dumps(
@@ -473,6 +565,14 @@ def render_ritual_result(result: RitualResult, *, json_output: bool = False) -> 
             lines.append("No folklore to review.")
         for row in recommendations:
             lines.append(f"{row.get('lemma_id')}: {row.get('recommendation')} -- {row.get('reason')}")
+        return "\n".join(lines)
+    if result.status == "applied":
+        lines = ["TRIBAL RITUAL APPLY", ""]
+        applied = result.payload.get("applied", [])
+        if not applied:
+            lines.append("No recommendations applied.")
+        for row in applied:
+            lines.append(f"{row.get('lemma_id')}: {row.get('action')} -- {row.get('reason')}")
         return "\n".join(lines)
     return json.dumps(result.payload, ensure_ascii=False, indent=2)
 
@@ -536,9 +636,11 @@ def handle_ritual_slash_command(command: str) -> str:
     try:
         if not parts or parts[0] == "review":
             return render_ritual_result(run_ritual_review(), json_output=json_output)
+        if parts[0] == "apply":
+            return render_ritual_result(run_ritual_apply(), json_output=json_output)
     except RitualError as exc:
         return str(exc)
-    return "Usage: /ritual review"
+    return "Usage: /ritual <review|apply>"
 
 
 def cmd_lore(args: argparse.Namespace) -> int:
@@ -569,8 +671,10 @@ def cmd_ritual(args: argparse.Namespace) -> int:
     try:
         if subcmd == "review":
             result = run_ritual_review()
+        elif subcmd == "apply":
+            result = run_ritual_apply()
         else:
-            print("Usage: tribal ritual review", file=sys.stderr)
+            print("Usage: tribal ritual <review|apply>", file=sys.stderr)
             return 2
     except RitualError as exc:
         print(str(exc), file=sys.stderr)
@@ -591,6 +695,6 @@ def main_lore(argv: list[str] | None = None) -> int:
 
 def main_ritual(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tribal ritual")
-    parser.add_argument("ritual_command", choices=["review"])
+    parser.add_argument("ritual_command", choices=["review", "apply"])
     parser.add_argument("--json", action="store_true", default=False)
     return cmd_ritual(parser.parse_args(argv))

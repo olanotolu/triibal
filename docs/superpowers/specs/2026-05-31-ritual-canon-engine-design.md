@@ -57,6 +57,10 @@ Reviews current folklore and recommends one of:
 
 V1 can run without child agents. It should be deterministic, fast, and conservative. The Keeper applies law rules and prints a status panel.
 
+### `tribal ritual apply`
+
+Applies the deterministic Ritual recommendations to the lore book. `promote_to_canon` becomes `status: canon`, `mark_stale` becomes `status: stale`, and falsified beliefs remain or become `status: falsified`. This is the explicit Keeper gavel after review.
+
 ### Slash Commands
 
 The chat runtime exposes:
@@ -67,6 +71,7 @@ The chat runtime exposes:
 /outcome <lemma-id> <evidence>
 /falsify <lemma-id> <evidence>
 /ritual review
+/ritual apply
 ```
 
 The slash commands call the same shared engine as the CLI.
@@ -192,6 +197,7 @@ tribal lore show <id>
 tribal lore confirm <id> --evidence "..."
 tribal lore falsify <id> --evidence "..."
 tribal ritual review
+tribal ritual apply
 ```
 
 ### Slash Wiring
@@ -265,6 +271,7 @@ Slash tests:
 - `/outcome <id> <evidence>` confirms a lemma
 - `/falsify <id> <evidence>` falsifies a lemma
 - `/ritual review` calls the shared review engine
+- `/ritual apply` applies recommendations through the shared engine
 
 Regression checks:
 
@@ -272,6 +279,7 @@ Regression checks:
 scripts/run_tests.sh tests/tribal_cli tests/cli
 /Users/term_/.local/bin/uv run tribal lore list
 /Users/term_/.local/bin/uv run tribal ritual review
+/Users/term_/.local/bin/uv run tribal ritual apply
 ```
 
 ## Non-Goals For V1

@@ -125,6 +125,7 @@ tribal lore show <lemma_id> [--json]
 tribal lore confirm <lemma_id> --evidence "..." [--json]
 tribal lore falsify <lemma_id> --evidence "..." [--json]
 tribal ritual review [--json]
+tribal ritual apply [--json]
 ```
 
 - [ ] **Step 4: Run CLI smoke checks**
@@ -228,9 +229,10 @@ Run:
 /Users/term_/.local/bin/uv run tribal ritual --help
 /Users/term_/.local/bin/uv run tribal lore list
 /Users/term_/.local/bin/uv run tribal ritual review
+/Users/term_/.local/bin/uv run tribal ritual apply
 ```
 
-Expected: help commands succeed; list/review work against current `~/.tribal`.
+Expected: help commands succeed; list/review/apply work against current `~/.tribal`.
 
 - [ ] **Step 5: Commit and push**
 

@@ -116,8 +116,8 @@ COMMAND_REGISTRY: list[CommandDef] = [
                args_hint="<lemma-id> <evidence>", cli_only=True),
     CommandDef("falsify", "Record falsifying evidence for a lore lemma", "Tribal",
                args_hint="<lemma-id> <evidence>", cli_only=True),
-    CommandDef("ritual", "Review folklore for canon, stale, or falsified status", "Tribal",
-               args_hint="<review>", subcommands=("review",), cli_only=True),
+    CommandDef("ritual", "Review or apply folklore canon decisions", "Tribal",
+               args_hint="<review|apply>", subcommands=("review", "apply"), cli_only=True),
 
     CommandDef("steer", "Inject a message after the next tool call without interrupting", "Session",
                args_hint="<prompt>"),

@@ -68,6 +68,7 @@ tribal lore show tk_12345678 # Inspect one lemma
 tribal lore confirm tk_12345678 --evidence "It survived contact with reality"
 tribal lore falsify tk_12345678 --evidence "The falsifier happened"
 tribal ritual review # Review folklore for canon, stale, or falsified status
+tribal ritual apply  # Apply Ritual recommendations to lore status
 tribal gateway      # Run messaging gateway
 tribal doctor       # Diagnose local configuration
 ```
@@ -75,6 +76,7 @@ tribal doctor       # Diagnose local configuration
 `tribal genesis` is the difference between an agent on its first day and one born with lineage.
 `tribal tribe ask` is the first act of life: Scout, Elder, Oracle, and Skeptic convene, and Keeper records the lineage and draft folklore.
 `tribal ritual review` is how the tribe decides whether folklore deserves to become canon after lived outcomes arrive.
+`tribal ritual apply` is the Keeper's gavel: it applies those decisions to the lore book.
 
 ## Upstream Attribution
 

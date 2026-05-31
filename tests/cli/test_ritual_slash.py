@@ -89,3 +89,20 @@ def test_slash_ritual_calls_shared_engine(monkeypatch):
     assert TribalCLI.process_command(cli, "/ritual review") is True
     assert calls == ["/ritual review"]
     assert cli._console_lines == ["RITUAL OK"]
+
+
+def test_slash_ritual_apply_calls_shared_engine(monkeypatch):
+    from cli import TribalCLI
+
+    cli = _make_cli_stub()
+    calls = []
+
+    def fake_handle(command):
+        calls.append(command)
+        return "APPLY OK"
+
+    monkeypatch.setattr("tribal_cli.ritual.handle_ritual_slash_command", fake_handle)
+
+    assert TribalCLI.process_command(cli, "/ritual apply") is True
+    assert calls == ["/ritual apply"]
+    assert cli._console_lines == ["APPLY OK"]

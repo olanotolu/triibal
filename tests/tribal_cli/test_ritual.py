@@ -27,11 +27,15 @@ def _write_lemmas(home, *lemmas, malformed: str | None = None):
 def _jsonl(path):
     if not path.exists():
         return []
-    return [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip() and line.strip().startswith("{")
-    ]
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return rows
 
 
 def _lemma(lemma_id="tk_ship", *, status="folklore", created_at=None, confirmations=0, falsifications=0):
@@ -156,6 +160,40 @@ class TestRitualEngine:
         lineage = _jsonl(tmp_path / "lineage.jsonl")
         assert lineage[-1]["event"] == "ritual.reviewed"
 
+    def test_ritual_apply_promotes_and_marks_stale(self, tmp_path):
+        from tribal_cli.ritual import run_ritual_apply
+
+        _birth(tmp_path)
+        old = (_utc() - timedelta(days=60)).isoformat().replace("+00:00", "Z")
+        _write_lemmas(
+            tmp_path,
+            _lemma("tk_keep", confirmations=1),
+            _lemma("tk_promote", confirmations=2),
+            _lemma("tk_dead", status="falsified", confirmations=1, falsifications=1),
+            _lemma("tk_stale", created_at=old),
+            malformed="{not json",
+        )
+
+        result = run_ritual_apply(home=tmp_path, now=_utc())
+
+        lemmas = {row["id"]: row for row in _jsonl(tmp_path / "lore" / "lemmas.jsonl")}
+        assert lemmas["tk_keep"]["status"] == "folklore"
+        assert lemmas["tk_promote"]["status"] == "canon"
+        assert lemmas["tk_promote"]["promotion"]["status"] == "canon"
+        assert lemmas["tk_dead"]["status"] == "falsified"
+        assert lemmas["tk_stale"]["status"] == "stale"
+        assert lemmas["tk_stale"]["promotion"]["status"] == "stale"
+        assert "{not json" in (tmp_path / "lore" / "lemmas.jsonl").read_text(encoding="utf-8")
+        assert {row["action"] for row in result.payload["applied"]} == {
+            "promoted_to_canon",
+            "already_falsified",
+            "marked_stale",
+        }
+        lineage_events = [row["event"] for row in _jsonl(tmp_path / "lineage.jsonl")]
+        assert "lore.promoted" in lineage_events
+        assert "lore.marked_stale" in lineage_events
+        assert lineage_events[-1] == "ritual.applied"
+
     def test_missing_genesis_refuses(self, tmp_path):
         from tribal_cli.ritual import RitualNotBornError, run_lore_list
 
@@ -219,3 +257,17 @@ class TestRitualEngine:
 
         payload = json.loads(capsys.readouterr().out)
         assert payload["payload"]["recommendations"][0]["recommendation"] == "promote_to_canon"
+
+    def test_cmd_ritual_apply_json(self, tmp_path, monkeypatch, capsys):
+        from tribal_cli import ritual
+
+        _birth(tmp_path)
+        _write_lemmas(tmp_path, _lemma("tk_ship", confirmations=2))
+        monkeypatch.setattr(ritual, "get_tribal_home", lambda: tmp_path)
+        args = argparse.Namespace(ritual_command="apply", json=True)
+
+        assert ritual.cmd_ritual(args) == 0
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["status"] == "applied"
+        assert payload["payload"]["applied"][0]["action"] == "promoted_to_canon"

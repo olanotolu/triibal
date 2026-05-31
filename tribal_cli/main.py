@@ -13833,6 +13833,8 @@ Examples:
     ritual_subparsers = ritual_parser.add_subparsers(dest="ritual_command")
     ritual_review = ritual_subparsers.add_parser("review", help="Review folklore for canon, stale, or falsified status")
     ritual_review.add_argument("--json", action="store_true", default=False, help="Print machine-readable review JSON")
+    ritual_apply = ritual_subparsers.add_parser("apply", help="Apply Ritual recommendations to lore status")
+    ritual_apply.add_argument("--json", action="store_true", default=False, help="Print machine-readable apply JSON")
     ritual_parser.set_defaults(func=cmd_ritual)
 
     # =========================================================================
