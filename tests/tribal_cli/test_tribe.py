@@ -115,7 +115,11 @@ class TestTribeCouncilRuntime:
         assert result.status == "convened"
         assert len(calls) == 2
         assert result.council["tribe_id"] == "personal.life"
-        assert [role["name"] for role in result.council["roles"]] == ["Scout", "Elder", "Oracle", "Skeptic"]
+        assert [role["name"] for role in result.council["roles"]] == ["Scout", "Elder", "Oracle", "Skeptic", "Keeper"]
+        assert result.council["roles"][-1]["summary"].startswith("Call:")
+        assert result.council["consensus"]["decision"]["call"]
+        assert result.council["consensus"]["decision"]["experiment"]
+        assert result.council["consensus"]["falsifiers"]
         assert result.council["consensus"]["confidence"] == "draft"
         assert result.council["draft_lemmas"]
 
@@ -126,9 +130,12 @@ class TestTribeCouncilRuntime:
         assert lineage_events[-1]["council_id"] == result.council["council_id"]
 
         lemmas = _jsonl(tmp_path / "lore" / "lemmas.jsonl")
+        assert len(lemmas) == 1
         assert {lemma["status"] for lemma in lemmas} == {"folklore"}
         assert {lemma["promotion"]["status"] for lemma in lemmas} == {"unvalidated"}
         assert all(lemma["source"]["council_id"] == result.council["council_id"] for lemma in lemmas)
+        assert lemmas[0]["source"]["role"] == "Keeper"
+        assert lemmas[0]["falsifiers"] == result.council["consensus"]["falsifiers"]
 
         payload = json.loads(render_tribe_result(result, json_output=True))
         assert payload["council"]["lineage_event_id"] == result.council["lineage_event_id"]
@@ -178,6 +185,51 @@ class TestTribeCouncilRuntime:
 
         assert summary == "Push harder."
         assert payload["draft_lemmas"] == ["Consensus needs dissent."]
+
+    def test_keeper_closes_with_skeptic_falsifier(self):
+        from tribal_cli.tribe import _build_closure
+
+        roles = [
+            {"name": "Scout", "summary": "The framing says chasing investors vs. locked in shipping. Ship the demo."},
+            {"name": "Elder", "summary": "Ship the demo. Demo-first fundraising wins when proof is missing."},
+            {"name": "Oracle", "summary": "Ship the demo. The artifact creates leverage."},
+            {
+                "name": "Skeptic",
+                "summary": (
+                    "What if the demo ships and nobody cares? "
+                    "If it is three weeks from done, the calculus flips. "
+                    "The binary frame may itself be the false choice."
+                ),
+            },
+        ]
+
+        closure = _build_closure("Ship or meet?", roles)
+
+        assert closure["decision"]["call"] == "Ship the demo."
+        assert "shortest feedback loop" in closure["decision"]["experiment"]
+        assert "demo ships and nobody cares" in closure["falsifiers"][0]
+        assert any("three weeks from done" in item for item in closure["falsifiers"])
+        assert closure["keeper_role"]["name"] == "Keeper"
+
+    def test_empty_skeptic_gets_fallback_challenge(self):
+        from tribal_cli.tribe import _ensure_skeptic_challenge
+
+        roles = [
+            {"name": "Scout", "summary": "Ship the demo.", "status": "completed"},
+            {"name": "Elder", "summary": "Ship the demo.", "status": "completed"},
+            {"name": "Oracle", "summary": "Ship the demo.", "status": "completed"},
+            {"name": "Skeptic", "summary": "", "status": "timeout"},
+        ]
+
+        updated = _ensure_skeptic_challenge(
+            "Should I ship the Tribal demo?",
+            roles,
+        )
+
+        skeptic = updated[-1]
+        assert skeptic["name"] == "Skeptic"
+        assert skeptic["status"] == "fallback"
+        assert "demo ships and nobody cares" in skeptic["summary"]
 
     def test_law_limits_draft_lemmas(self, tmp_path):
         from tribal_cli.tribe import run_tribe_ask

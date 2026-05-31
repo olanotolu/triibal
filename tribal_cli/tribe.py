@@ -317,6 +317,140 @@ def _skeptic_args(question: str, tribe_id: str, role_rows: list[dict[str, Any]])
     }
 
 
+def _first_sentence(text: str) -> str:
+    clean = re.sub(r"\s+", " ", text or "").strip()
+    if not clean:
+        return ""
+    match = re.match(r"(.+?[.!?])(?:\s|$)", clean)
+    sentence = match.group(1).strip() if match else clean
+    if len(sentence) > 180:
+        sentence = sentence[:177].rstrip() + "..."
+    if sentence and sentence[-1] not in ".!?":
+        sentence += "."
+    return sentence
+
+
+def _select_call(roles: list[dict[str, Any]]) -> str:
+    joined = " ".join(
+        str(role.get("summary", ""))
+        for role in roles
+        if role.get("name") in {"Scout", "Elder", "Oracle"}
+    ).lower()
+    if "ship the demo" in joined:
+        return "Ship the demo."
+    if "ship first" in joined:
+        return "Ship first."
+    if "lock in" in joined and "ship" in joined:
+        return "Lock in and ship."
+
+    candidates = [
+        _first_sentence(role.get("summary", ""))
+        for role in roles
+        if role.get("name") in {"Scout", "Elder", "Oracle"}
+    ]
+    candidates = [candidate for candidate in candidates if candidate]
+    if not candidates:
+        return "Run the shortest feedback-loop experiment."
+
+    counts: dict[str, int] = {}
+    originals: dict[str, str] = {}
+    for candidate in candidates:
+        key = re.sub(r"\W+", " ", candidate.lower()).strip()
+        counts[key] = counts.get(key, 0) + 1
+        originals.setdefault(key, candidate)
+    best_key = max(counts, key=counts.get)
+    return originals[best_key]
+
+
+def _ensure_skeptic_challenge(question: str, roles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    updated = [dict(role) for role in roles]
+    for role in updated:
+        if role.get("name") != "Skeptic":
+            continue
+        if str(role.get("summary") or "").strip():
+            return updated
+        lower_question = question.lower()
+        if "demo" in lower_question:
+            challenge = (
+                "What if the demo ships and nobody cares? Treat the decision as a market test, "
+                "not a proof of value. The closing call should include the smallest audience or "
+                "investor feedback loop that can falsify demo-first this week."
+            )
+        else:
+            challenge = (
+                "What if the council is solving the wrong problem? Treat the decision as an "
+                "experiment and define the result that would prove it wrong."
+            )
+        role["summary"] = challenge
+        role["status"] = "fallback"
+        return updated
+
+    updated.append({
+        "name": "Skeptic",
+        "status": "fallback",
+        "summary": (
+            "What if the council is solving the wrong problem? Treat the decision as an "
+            "experiment and define the result that would prove it wrong."
+        ),
+        "duration_seconds": 0,
+        "payload": {},
+    })
+    return updated
+
+
+def _extract_falsifiers(skeptic_summary: str) -> list[str]:
+    falsifiers: list[str] = []
+    for question in re.findall(r"what if ([^?]+)\?", skeptic_summary or "", flags=re.IGNORECASE):
+        challenge = question.strip()
+        if challenge:
+            falsifiers.append(f"If {challenge}, weaken or revise this council decision.")
+
+    for clause in re.findall(r"\bif\s+([^.!?]+[.!?])", skeptic_summary or "", flags=re.IGNORECASE):
+        challenge = clause.strip().rstrip(".!?")
+        if challenge:
+            falsifiers.append(f"If {challenge[0].lower() + challenge[1:]}, weaken or revise this council decision.")
+
+    lower = (skeptic_summary or "").lower()
+    if "false choice" in lower or "binary" in lower:
+        falsifiers.append("If a hybrid path creates a shorter feedback loop, demote the binary framing.")
+    if "manufactured precision" in lower or "pulled from pattern" in lower:
+        falsifiers.append("If forecast numbers lack evidence, strip them from lore.")
+    if not falsifiers:
+        falsifiers.append("If lived results contradict the decision, demote the lemma.")
+    return falsifiers[:3]
+
+
+def _build_closure(question: str, roles: list[dict[str, Any]]) -> dict[str, Any]:
+    call = _select_call(roles)
+    skeptic_summary = next((role.get("summary", "") for role in roles if role.get("name") == "Skeptic"), "")
+    falsifiers = _extract_falsifiers(skeptic_summary)
+    experiment = (
+        f"Run the shortest feedback loop: act on '{call}' as a bounded experiment, "
+        "then test the strongest Skeptic falsifier before treating the pattern as lore."
+    )
+    summary = (
+        f"Call: {call} Given the Skeptic's point, this is not canon; it is an experiment. "
+        f"{experiment} Falsifier: {falsifiers[0]}"
+    )
+    return {
+        "decision": {
+            "call": call,
+            "experiment": experiment,
+            "confidence": "draft",
+            "rationale": "Keeper closes the council by integrating agreement and dissent.",
+        },
+        "dissent": skeptic_summary,
+        "falsifiers": falsifiers,
+        "keeper_role": {
+            "name": "Keeper",
+            "status": "completed",
+            "summary": summary,
+            "duration_seconds": 0,
+            "payload": {},
+        },
+    }
+
+
 def _draft_lemmas(
     *,
     home: Path,
@@ -324,6 +458,7 @@ def _draft_lemmas(
     tribe_id: str,
     roles: list[dict[str, Any]],
     law: dict[str, Any],
+    closure: dict[str, Any],
     now: datetime,
 ) -> list[str]:
     folklore = law.get("folklore") if isinstance(law.get("folklore"), dict) else {}
@@ -334,55 +469,66 @@ def _draft_lemmas(
     except (TypeError, ValueError):
         max_drafts = 3
     max_drafts = max(0, max_drafts)
+    if max_drafts <= 0:
+        return []
 
     written: list[str] = []
-    seen_claims: set[str] = set()
-    for role in roles:
-        payload = role.get("payload") if isinstance(role.get("payload"), dict) else {}
-        drafts = payload.get("draft_lemmas")
-        if not isinstance(drafts, list):
-            continue
-        for draft in drafts:
-            if len(written) >= max_drafts:
-                return written
-            if isinstance(draft, str):
-                claim = draft.strip()
-                confidence = None
-            elif isinstance(draft, dict):
-                claim = str(draft.get("claim") or draft.get("title") or draft.get("body") or "").strip()
-                confidence = draft.get("confidence")
-            else:
-                continue
-            if not claim or claim in seen_claims:
-                continue
-            seen_claims.add(claim)
-            lemma_id = f"tk_{uuid.uuid4().hex[:8]}"
-            lemma = {
-                "id": lemma_id,
-                "status": "folklore",
-                "tribe_id": tribe_id,
-                "claim": claim,
-                "created_at": _iso_z(now),
-                "source": {"type": "council", "council_id": council_id, "role": role["name"]},
-                "evidence": [{"role": role["name"], "summary": role.get("summary", "")}],
-                "confidence": confidence,
-                "promotion": {"status": "unvalidated"},
-            }
-            _append_jsonl(home / "lore" / "lemmas.jsonl", lemma)
-            written.append(lemma_id)
+    decision = closure.get("decision") if isinstance(closure.get("decision"), dict) else {}
+    claim = str(decision.get("call") or "").strip()
+    if not claim:
+        return []
+    lemma_id = f"tk_{uuid.uuid4().hex[:8]}"
+    lemma = {
+        "id": lemma_id,
+        "status": "folklore",
+        "tribe_id": tribe_id,
+        "claim": claim,
+        "created_at": _iso_z(now),
+        "source": {"type": "council", "council_id": council_id, "role": "Keeper"},
+        "evidence": [
+            {"role": role["name"], "summary": role.get("summary", "")}
+            for role in roles
+            if role.get("name") != "Keeper"
+        ],
+        "falsifiers": closure.get("falsifiers") or [],
+        "confidence": decision.get("confidence", "draft"),
+        "promotion": {"status": "unvalidated"},
+    }
+    _append_jsonl(home / "lore" / "lemmas.jsonl", lemma)
+    written.append(lemma_id)
     return written
 
 
-def _build_consensus(question: str, roles: list[dict[str, Any]], draft_ids: list[str]) -> dict[str, Any]:
-    parts = [f"{r['name']}: {r['summary']}" for r in roles if r.get("summary")]
-    dissent = next((r["summary"] for r in roles if r["name"] == "Skeptic"), "")
+def _build_consensus(
+    question: str,
+    roles: list[dict[str, Any]],
+    closure: dict[str, Any],
+    draft_ids: list[str],
+) -> dict[str, Any]:
+    parts = [
+        f"{r['name']}: {r['summary']}"
+        for r in roles
+        if r.get("summary") and r.get("name") != "Keeper"
+    ]
+    decision = closure["decision"]
+    falsifier_lines = "\n".join(f"- {item}" for item in closure.get("falsifiers", []))
     answer = (
         f"The tribe convened on: {question}\n\n"
         + "\n".join(parts)
-        + "\n\nKeeper: This is council guidance, not canon. "
+        + f"\n\nKeeper: {closure['keeper_role']['summary']}"
+        + f"\n\nDecision: {decision['call']}"
+        + f"\nExperiment: {decision['experiment']}"
+        + f"\nFalsifiers:\n{falsifier_lines}"
+        + "\n\nThis is council guidance, not canon. "
         + f"{len(draft_ids)} draft folklore lemma(s) were recorded."
     )
-    return {"answer": answer, "confidence": "draft", "dissent": dissent}
+    return {
+        "answer": answer,
+        "confidence": "draft",
+        "decision": decision,
+        "dissent": closure.get("dissent", ""),
+        "falsifiers": closure.get("falsifiers", []),
+    }
 
 
 def run_tribe_ask(
@@ -411,18 +557,21 @@ def run_tribe_ask(
         wave_one_roles = _delegate_results(wave_one_raw, ["Scout", "Elder", "Oracle"])
         skeptic_raw = runner(_skeptic_args(question, tribe_id, wave_one_roles))
         skeptic_role = _delegate_results(skeptic_raw, ["Skeptic"])
-    roles = wave_one_roles + skeptic_role
+    roles = _ensure_skeptic_challenge(question, wave_one_roles + skeptic_role)
+    closure = _build_closure(question, roles)
+    roles_with_keeper = roles + [closure["keeper_role"]]
 
     draft_ids = _draft_lemmas(
         home=home_path,
         council_id=council_id,
         tribe_id=tribe_id,
-        roles=roles,
+        roles=roles_with_keeper,
         law=law,
+        closure=closure,
         now=now,
     )
     lineage_event_id = f"lin_{uuid.uuid4().hex[:10]}"
-    consensus = _build_consensus(question, roles, draft_ids)
+    consensus = _build_consensus(question, roles_with_keeper, closure, draft_ids)
     council = {
         "schema_version": SCHEMA_VERSION,
         "council_id": council_id,
@@ -431,7 +580,7 @@ def run_tribe_ask(
         "asked_at": _iso_z(now),
         "roles": [
             {k: v for k, v in role.items() if k != "payload"}
-            for role in roles
+            for role in roles_with_keeper
         ],
         "consensus": consensus,
         "draft_lemmas": draft_ids,
@@ -445,6 +594,8 @@ def run_tribe_ask(
         "tribe_id": tribe_id,
         "timestamp": council["asked_at"],
         "question": question,
+        "decision": consensus.get("decision", {}),
+        "falsifiers": consensus.get("falsifiers", []),
         "draft_lemmas": draft_ids,
     }
     _append_jsonl(home_path / "lineage.jsonl", lineage)
